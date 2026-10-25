@@ -14,7 +14,17 @@ function formatSize(bytes) {
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} ГБ`;
 }
 
-export default function LibrarySection({ id, title, hint, accept, folder, items, onUploaded }) {
+function uploadHintName(fileList, fallback) {
+  const first = fileList && fileList[0];
+  if (!first) {
+    return fallback;
+  }
+  const rel = String(first.webkitRelativePath || "").replace(/\\/g, "/");
+  const top = rel.split("/").filter(Boolean)[0];
+  return top || first.name || fallback;
+}
+
+export default function LibrarySection({ id, title, hint, accept, folder, folderOnly, note, items, onUploaded }) {
   const fileRef = useRef(null);
   const folderRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -34,8 +44,15 @@ export default function LibrarySection({ id, title, hint, accept, folder, items,
     setBusy(true);
     setMessage("");
     const body = new FormData();
-    Array.from(fileList).forEach((file) => body.append("files", file, file.name));
-    const hintName = fileList[0] && (fileList[0].webkitRelativePath || fileList[0].name);
+    Array.from(fileList).forEach((file) => {
+      const rel = file.webkitRelativePath || file.name;
+      if (file.webkitRelativePath) {
+        body.append(`file:${encodeURIComponent(rel)}`, file);
+      } else {
+        body.append("files", file, file.name);
+      }
+    });
+    const hintName = uploadHintName(fileList, id);
     try {
       const res = await fetch(`/api/library/${id}?name=${encodeURIComponent(hintName || id)}`, {
         method: "POST",
@@ -70,22 +87,26 @@ export default function LibrarySection({ id, title, hint, accept, folder, items,
           <p>{hint}</p>
         </div>
         <div className="library-actions">
-          <button type="button" className="btn ghost" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}>
-            {busy ? "Загрузка…" : "Загрузить с диска"}
-          </button>
+          {folderOnly ? null : (
+            <button type="button" className="btn ghost" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}>
+              {busy ? "Загрузка…" : "Загрузить с диска"}
+            </button>
+          )}
           {folder ? (
             <button type="button" className="btn ghost" disabled={busy} onClick={() => folderRef.current && folderRef.current.click()}>
-              Папка
+              {busy ? "Загрузка…" : folderOnly ? "Загрузить папку" : "Папка"}
             </button>
           ) : null}
-          <input
-            ref={fileRef}
-            type="file"
-            accept={accept}
-            multiple
-            hidden
-            onChange={(ev) => sendFiles(ev.target.files)}
-          />
+          {folderOnly ? null : (
+            <input
+              ref={fileRef}
+              type="file"
+              accept={accept}
+              multiple
+              hidden
+              onChange={(ev) => sendFiles(ev.target.files)}
+            />
+          )}
           {folder ? (
             <input
               ref={folderRef}
@@ -98,6 +119,7 @@ export default function LibrarySection({ id, title, hint, accept, folder, items,
           ) : null}
         </div>
       </div>
+      {note ? <p className="shelf-note">{note}</p> : null}
       {message ? <p className="note">{message}</p> : null}
       {!items.length ? (
         <p className="empty-shelf">На этой полке пока пусто.</p>

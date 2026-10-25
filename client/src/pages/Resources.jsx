@@ -5,8 +5,11 @@ const SHELVES = [
   {
     id: "scenes",
     title: "Сцены",
-    hint: "Файлы сцен редактора (.gem). Миниатюра — эмблема конструктора.",
-    accept: ".gem,application/octet-stream",
+    hint: "Папка сцены: файл .gem и связанные меши, шрифты и картинки. Миниатюра — эмблема конструктора.",
+    accept: ".gem,.cmf,.png,.jpg,.jpeg,.webp,.bmp,.tga,.gif,.ttf,.otf,.json",
+    folder: true,
+    folderOnly: true,
+    note: "Разместите директорию, поместив все объекты сцены (меши, шрифты, картинки) в папки, одноимённые тем, в которых они сейчас находятся.",
   },
   {
     id: "simulations",

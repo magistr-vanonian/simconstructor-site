@@ -13,6 +13,7 @@ const { createLocalStore, CATEGORIES } = require("./store");
 
 const ROOT = path.resolve(__dirname, "..");
 const PORT = Number(process.env.PORT || 8787);
+const HOST = process.env.HOST || "0.0.0.0";
 const PUBLISH_TOKEN = process.env.PUBLISH_TOKEN || "kristal-demo-publish";
 const PUBLIC_ORIGIN = process.env.PUBLIC_ORIGIN || "";
 
@@ -202,6 +203,28 @@ app.get("/api/library/:category/:id/download", (req, res) => {
   archive.finalize();
 });
 
+function relativeUploadParts(file, sanitize) {
+  let rel = "";
+  if (file && typeof file.fieldname === "string" && file.fieldname.startsWith("file:")) {
+    try {
+      rel = decodeURIComponent(file.fieldname.slice(5));
+    } catch {
+      rel = file.originalname || "";
+    }
+  } else {
+    rel = (file && (file.webkitRelativePath || file.originalname)) || "";
+  }
+  const parts = String(rel)
+    .replace(/\\/g, "/")
+    .split("/")
+    .map((part) => sanitize(part))
+    .filter((part) => part && part !== "." && part !== "..");
+  if (parts.length > 1) {
+    parts.shift();
+  }
+  return parts;
+}
+
 function libraryMulter(req, res, next) {
   const category = req.params.category;
   if (!CATEGORIES.includes(category)) {
@@ -214,20 +237,25 @@ function libraryMulter(req, res, next) {
 
   const disk = multer.diskStorage({
     destination: (fileReq, file, cb) => {
-      const rel = String(file.webkitRelativePath || file.originalname || "").replace(/\\/g, "/");
-      const parts = rel.split("/").map((part) => store.sanitizeName(part)).filter(Boolean);
+      const parts = relativeUploadParts(file, store.sanitizeName);
       parts.pop();
       const dest = parts.length ? path.join(fileReq.itemDir, ...parts) : fileReq.itemDir;
-      fs.mkdirSync(dest, { recursive: true });
-      cb(null, dest);
+      const resolved = path.resolve(dest);
+      const root = path.resolve(fileReq.itemDir);
+      if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+        return cb(new Error("Некорректный путь загрузки"));
+      }
+      fs.mkdirSync(resolved, { recursive: true });
+      cb(null, resolved);
     },
     filename: (_fileReq, file, cb) => {
-      cb(null, store.sanitizeName(file.originalname));
+      const parts = relativeUploadParts(file, store.sanitizeName);
+      cb(null, parts.length ? parts[parts.length - 1] : store.sanitizeName(file.originalname));
     },
   });
   const upload = multer({
     storage: disk,
-    limits: { fileSize: 8 * 1024 * 1024 * 1024, files: 400 },
+    limits: { fileSize: 8 * 1024 * 1024 * 1024, files: 8000 },
   }).any();
   upload(req, res, next);
 }
@@ -243,7 +271,8 @@ app.post("/api/library/:category", libraryMulter, (req, res) => {
       }
       return res.status(400).json({ error: "Файлы не получены" });
     }
-    const names = files.map((file) => file.originalname);
+    const hint = String(req.query.name || "").trim();
+    const names = hint ? [hint] : files.map((file) => file.originalname);
     const meta = store.finalizeUpload(req.params.category, req.itemId, req.itemDir, names);
     res.json({ ok: true, item: meta });
   } catch (err) {
@@ -262,8 +291,8 @@ if (fs.existsSync(clientDist)) {
   });
 }
 
-const server = app.listen(PORT, () => {
-  console.log(`SimConstructor site API http://127.0.0.1:${PORT}`);
+const server = app.listen(PORT, HOST, () => {
+  console.log(`SimConstructor site API http://${HOST}:${PORT}`);
   console.log(`storage: ${path.join(ROOT, "storage")}  (local stand-in for cloud)`);
 });
 server.timeout = 0;

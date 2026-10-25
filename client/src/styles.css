@@ -311,8 +311,14 @@ h2 {
 }
 
 .empty-shelf,
-.note {
+.note,
+.shelf-note {
   color: var(--muted);
+}
+
+.shelf-note {
+  margin: -6px 0 16px;
+  max-width: 46rem;
 }
 
 .card-grid {
