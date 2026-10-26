@@ -12,6 +12,9 @@ content/videos/**/*.webm
 content/videos/**/*.ogg
 content/videos/**/*.mov
 .env
+.env.deploy
+__pycache__/
+*.pyc
 *.log
 .DS_Store
 Thumbs.db

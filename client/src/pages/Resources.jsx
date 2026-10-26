@@ -5,11 +5,11 @@ const SHELVES = [
   {
     id: "scenes",
     title: "Сцены",
-    hint: "Папка сцены: файл .gem и связанные меши, шрифты и картинки. Миниатюра — эмблема конструктора.",
+    hint: "Сначала сцена .gem, затем элементы — можно выбрать всё, лишние отбросятся по имени",
     accept: ".gem,.cmf,.png,.jpg,.jpeg,.webp,.bmp,.tga,.gif,.ttf,.otf,.json",
-    folder: true,
-    folderOnly: true,
-    note: "Разместите директорию, поместив все объекты сцены (меши, шрифты, картинки) в папки, одноимённые тем, в которых они сейчас находятся.",
+    sceneWizard: true,
+    note: "При выгрузке разместите сначала сцену, потом все необходимые элементы.",
+    downloadNote: "При загрузке разместите все скачанные файлы в соответствующих папках в директории Assets.",
   },
   {
     id: "simulations",
@@ -83,6 +83,7 @@ export default function Resources() {
         <p className="lede">
           Здесь можно скачать сам конструктор симуляций — чистую редакцию без карт, фигурок, шрифтов
           и прочих импортированных ассетов. Это рабочий инструмент: пустой проект, движок и редактор.
+          Распакуйте архив целиком в одну папку и запускайте SimConstructor.exe оттуда, не из окна zip.
           Готовые сцены, ландшафты и прочие материалы лежат ниже, в библиотеке решений.
         </p>
         <div className="download-row">
@@ -90,10 +91,6 @@ export default function Resources() {
             <a className="gold-plaque" href="/api/constructor/download">
               <span className="gold-plaque-shine" />
               <span className="gold-plaque-label">Скачать конструктор</span>
-              <span className="gold-plaque-meta">
-                SimConstructor-Release.zip
-                {ctor.size ? ` · ${formatSize(ctor.size)}` : ""}
-              </span>
             </a>
           ) : (
             <div className="gold-plaque is-disabled" role="status">
@@ -107,10 +104,6 @@ export default function Resources() {
 
       <div className="library-intro">
         <h2>Библиотека готовых решений</h2>
-        <p>
-          Актуальный список из хранилища. Каждый объект можно скачать. На полку можно сразу положить
-          файл или папку с диска — демо без учётки. Позже сюда встанет облако и домен.
-        </p>
       </div>
 
       {SHELVES.map((shelf) => (

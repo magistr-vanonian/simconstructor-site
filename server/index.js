@@ -203,7 +203,22 @@ app.get("/api/library/:category/:id/download", (req, res) => {
   archive.finalize();
 });
 
-function relativeUploadParts(file, sanitize) {
+const ASSET_ROOTS = new Set([
+  "meshes",
+  "textures",
+  "fonts",
+  "maps",
+  "landscapes",
+  "simulations",
+  "prefabs",
+  "scenes",
+  "vfx",
+  "scripts",
+  "imported",
+  "landscapewithmap",
+]);
+
+function relativeUploadParts(file, sanitize, preserveAssetTree) {
   let rel = "";
   if (file && typeof file.fieldname === "string" && file.fieldname.startsWith("file:")) {
     try {
@@ -220,7 +235,12 @@ function relativeUploadParts(file, sanitize) {
     .map((part) => sanitize(part))
     .filter((part) => part && part !== "." && part !== "..");
   if (parts.length > 1) {
-    parts.shift();
+    const first = parts[0].toLowerCase();
+    if (first === "assets") {
+      parts.shift();
+    } else if (!preserveAssetTree && !ASSET_ROOTS.has(first)) {
+      parts.shift();
+    }
   }
   return parts;
 }
@@ -233,11 +253,12 @@ function libraryMulter(req, res, next) {
   const hint = req.query.name || `item-${Date.now()}`;
   req.itemId = store.makeId(hint);
   req.itemDir = path.join(store.libraryRoot, category, req.itemId);
+  req.preserveAssetTree = String(req.query.layout || "") === "assets";
   fs.mkdirSync(req.itemDir, { recursive: true });
 
   const disk = multer.diskStorage({
     destination: (fileReq, file, cb) => {
-      const parts = relativeUploadParts(file, store.sanitizeName);
+      const parts = relativeUploadParts(file, store.sanitizeName, fileReq.preserveAssetTree);
       parts.pop();
       const dest = parts.length ? path.join(fileReq.itemDir, ...parts) : fileReq.itemDir;
       const resolved = path.resolve(dest);
@@ -249,7 +270,7 @@ function libraryMulter(req, res, next) {
       cb(null, resolved);
     },
     filename: (_fileReq, file, cb) => {
-      const parts = relativeUploadParts(file, store.sanitizeName);
+      const parts = relativeUploadParts(file, store.sanitizeName, _fileReq.preserveAssetTree);
       cb(null, parts.length ? parts[parts.length - 1] : store.sanitizeName(file.originalname));
     },
   });

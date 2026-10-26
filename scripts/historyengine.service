@@ -1,0 +1,19 @@
+[Unit]
+Description=historyengine.ru promo site
+After=network.target
+
+[Service]
+Type=simple
+User=historyengine
+Group=historyengine
+WorkingDirectory=/var/www/historyengine
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+EnvironmentFile=-/var/www/historyengine/.env
+ExecStart=/usr/bin/node server/index.js
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

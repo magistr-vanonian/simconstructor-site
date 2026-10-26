@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import SceneUploadWizard from "./SceneUploadWizard.jsx";
 
 function formatSize(bytes) {
   const n = Number(bytes) || 0;
@@ -24,7 +25,19 @@ function uploadHintName(fileList, fallback) {
   return top || first.name || fallback;
 }
 
-export default function LibrarySection({ id, title, hint, accept, folder, folderOnly, note, items, onUploaded }) {
+export default function LibrarySection({
+  id,
+  title,
+  hint,
+  accept,
+  folder,
+  folderOnly,
+  sceneWizard,
+  note,
+  downloadNote,
+  items,
+  onUploaded,
+}) {
   const fileRef = useRef(null);
   const folderRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -86,40 +99,44 @@ export default function LibrarySection({ id, title, hint, accept, folder, folder
           <h2>{title}</h2>
           <p>{hint}</p>
         </div>
-        <div className="library-actions">
-          {folderOnly ? null : (
-            <button type="button" className="btn ghost" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}>
-              {busy ? "Загрузка…" : "Загрузить с диска"}
-            </button>
-          )}
-          {folder ? (
-            <button type="button" className="btn ghost" disabled={busy} onClick={() => folderRef.current && folderRef.current.click()}>
-              {busy ? "Загрузка…" : folderOnly ? "Загрузить папку" : "Папка"}
-            </button>
-          ) : null}
-          {folderOnly ? null : (
-            <input
-              ref={fileRef}
-              type="file"
-              accept={accept}
-              multiple
-              hidden
-              onChange={(ev) => sendFiles(ev.target.files)}
-            />
-          )}
-          {folder ? (
-            <input
-              ref={folderRef}
-              type="file"
-              multiple
-              hidden
-              onChange={(ev) => sendFiles(ev.target.files)}
-              {...{ webkitdirectory: "", directory: "" }}
-            />
-          ) : null}
-        </div>
+        {sceneWizard ? null : (
+          <div className="library-actions">
+            {folderOnly ? null : (
+              <button type="button" className="btn ghost" disabled={busy} onClick={() => fileRef.current && fileRef.current.click()}>
+                {busy ? "Загрузка…" : "Загрузить с диска"}
+              </button>
+            )}
+            {folder ? (
+              <button type="button" className="btn ghost" disabled={busy} onClick={() => folderRef.current && folderRef.current.click()}>
+                {busy ? "Загрузка…" : folderOnly ? "Загрузить папку" : "Папка"}
+              </button>
+            ) : null}
+            {folderOnly ? null : (
+              <input
+                ref={fileRef}
+                type="file"
+                accept={accept}
+                multiple
+                hidden
+                onChange={(ev) => sendFiles(ev.target.files)}
+              />
+            )}
+            {folder ? (
+              <input
+                ref={folderRef}
+                type="file"
+                multiple
+                hidden
+                onChange={(ev) => sendFiles(ev.target.files)}
+                {...{ webkitdirectory: "", directory: "" }}
+              />
+            ) : null}
+          </div>
+        )}
       </div>
       {note ? <p className="shelf-note">{note}</p> : null}
+      {downloadNote ? <p className="shelf-note">{downloadNote}</p> : null}
+      {sceneWizard ? <SceneUploadWizard categoryId={id} accept={accept} onUploaded={onUploaded} /> : null}
       {message ? <p className="note">{message}</p> : null}
       {!items.length ? (
         <p className="empty-shelf">На этой полке пока пусто.</p>
