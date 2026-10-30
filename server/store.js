@@ -290,6 +290,7 @@ function createLocalStore(opts) {
     makeId,
     sanitizeName,
     firstVideo,
+    walkFiles,
     libraryRoot,
     contentRoot,
     brandIcon,

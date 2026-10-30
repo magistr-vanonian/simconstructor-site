@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { validateLibraryFiles } from "../lib/libraryRules.js";
 import SceneUploadWizard from "./SceneUploadWizard.jsx";
 
 function formatSize(bytes) {
@@ -50,8 +51,38 @@ export default function LibrarySection({
     }
   }, []);
 
+  async function inspectFiles(fileList) {
+    const files = Array.from(fileList || []);
+    const payload = [];
+    for (const file of files) {
+      const rel = file.webkitRelativePath || file.name;
+      const item = { rel, name: file.name };
+      if (file.name.toLowerCase() === "kristal.build.json") {
+        try {
+          item.text = await file.text();
+        } catch {
+          item.text = "";
+        }
+      }
+      payload.push(item);
+    }
+    return payload;
+  }
+
   async function sendFiles(fileList) {
     if (!fileList || !fileList.length) {
+      return;
+    }
+    const inspected = await inspectFiles(fileList);
+    const blocked = validateLibraryFiles(id, inspected);
+    if (blocked) {
+      setMessage(blocked);
+      if (fileRef.current) {
+        fileRef.current.value = "";
+      }
+      if (folderRef.current) {
+        folderRef.current.value = "";
+      }
       return;
     }
     setBusy(true);

@@ -10,6 +10,7 @@ const multer = require("multer");
 const mime = require("mime-types");
 const archiver = require("archiver");
 const { createLocalStore, CATEGORIES } = require("./store");
+const { validateLibraryFiles } = require("../shared/libraryRules");
 
 const ROOT = path.resolve(__dirname, "..");
 const PORT = Number(process.env.PORT || 8787);
@@ -82,6 +83,24 @@ app.get("/api/guide/video/:slot", (req, res) => {
     url: `/media/videos/${slot}/${encodeURIComponent(path.basename(file))}`,
     filename: path.basename(file),
   });
+});
+
+function sendConstructorVersion(req, res) {
+  const file = path.join(ROOT, "content", "constructor-version.txt");
+  try {
+    const text = fs.readFileSync(file, "utf8").trim();
+    res.setHeader("Cache-Control", "no-store");
+    res.type("text/plain; charset=utf-8");
+    res.send(`${text}\n`);
+  } catch {
+    res.status(404).type("text/plain").send("missing\n");
+  }
+}
+
+app.get("/constructor-version.txt", sendConstructorVersion);
+app.get("/api/constructor/version", sendConstructorVersion);
+app.get("/ресурсы", (_req, res) => {
+  res.redirect(302, "/resources");
 });
 
 app.get("/api/constructor", (_req, res) => {
@@ -291,6 +310,28 @@ app.post("/api/library/:category", libraryMulter, (req, res) => {
         /* ignore */
       }
       return res.status(400).json({ error: "Файлы не получены" });
+    }
+    const walked = store.walkFiles(req.itemDir);
+    const inspected = walked.map((file) => {
+      const rel = path.relative(req.itemDir, file);
+      const item = { rel, name: path.basename(file) };
+      if (item.name.toLowerCase() === "kristal.build.json") {
+        try {
+          item.text = fs.readFileSync(file, "utf8");
+        } catch {
+          item.text = "";
+        }
+      }
+      return item;
+    });
+    const blocked = validateLibraryFiles(req.params.category, inspected);
+    if (blocked) {
+      try {
+        fs.rmSync(req.itemDir, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+      return res.status(400).json({ error: blocked });
     }
     const hint = String(req.query.name || "").trim();
     const names = hint ? [hint] : files.map((file) => file.originalname);

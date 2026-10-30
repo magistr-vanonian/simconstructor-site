@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import io
+import re
 import secrets
 import sys
 import tarfile
@@ -25,6 +26,34 @@ SKIP_FILES = {
     ".env.deploy",
     ".env",
 }
+
+VERSION_RE = re.compile(r"^\d+(\.\d+){0,3}$")
+VERSION_FILE = ROOT / "content" / "constructor-version.txt"
+
+
+def parse_version_arg(argv: list[str]) -> str | None:
+    if len(argv) <= 1:
+        return None
+    if argv[1] in ("-h", "--help"):
+        print("usage: python scripts/deploy.py [version]")
+        print("  version  written to content/constructor-version.txt (example: 1.0.1)")
+        raise SystemExit(0)
+    if argv[1] in ("--version", "-v"):
+        if len(argv) < 3:
+            raise SystemExit("deploy.py: --version needs a value like 1.0.1")
+        return argv[2]
+    if argv[1].startswith("-"):
+        raise SystemExit(f"deploy.py: unknown option {argv[1]}")
+    return argv[1]
+
+
+def write_version_file(version: str) -> None:
+    text = version.strip()
+    if not VERSION_RE.fullmatch(text):
+        raise SystemExit(f"deploy.py: bad version '{version}' (use 1.0.1)")
+    VERSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+    VERSION_FILE.write_text(text + "\n", encoding="ascii")
+    print(f"constructor-version.txt <- {text}")
 
 
 def load_env() -> dict[str, str]:
@@ -80,6 +109,14 @@ def run(client: paramiko.SSHClient, command: str, timeout: int = 180) -> str:
 
 
 def main() -> int:
+    version = parse_version_arg(sys.argv)
+    if version:
+        write_version_file(version)
+    elif VERSION_FILE.is_file():
+        print(f"constructor-version.txt: {VERSION_FILE.read_text(encoding='utf-8').strip()}")
+    else:
+        print("constructor-version.txt: missing (pass a version, e.g. python scripts/deploy.py 1.0.1)")
+
     env = load_env()
     host = env["DEPLOY_HOST"]
     port = int(env.get("DEPLOY_PORT") or 22)
